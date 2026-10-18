@@ -4,6 +4,8 @@ import { commandExit } from './command_exit.js';
 import { commandHelp } from './command_help.js';
 import { commandMap } from './command_map.js';
 import { commandMapB } from './command_mapb.js';
+import { commandExplore } from './command_explore.js';
+import { commandCatch } from './command_catch.js';
 
 export function getCommands(): Record<string, CLICommand> {
   return {
@@ -27,6 +29,16 @@ export function getCommands(): Record<string, CLICommand> {
       description: 'Get previous locations',
       callback: commandMapB,
     },
+    explore: {
+      name: 'explore',
+      description: 'Explore a location area',
+      callback: commandExplore,
+    },
+    catch: {
+      name: 'catch',
+      description: 'Attempt to catch a Pokemon',
+      callback: commandCatch,
+    },
   };
 }
 
@@ -39,27 +51,24 @@ export function cleanInput(input: string): string[] {
 
 export async function startREPL(): Promise<void> {
   const state = initState();
+  const { rl } = state;
 
-  state.rl.prompt();
+  rl.prompt();
 
-  state.rl.on('line', async (line) => {
-    if (line.trim().length === 0) {
-      state.rl.prompt();
+  rl.on('line', async (line) => {
+    const inputs = cleanInput(line);
+    const command = state.commands[inputs[0]];
+
+    if (!command) {
+      console.log('Unknown command');
     } else {
-      const firstCommand = cleanInput(line);
-      const selectedCommand = state.commands[firstCommand[0]];
-
-      if (!selectedCommand) {
-        console.log('Unknown command');
-      } else {
-        try {
-          await selectedCommand.callback(state);
-        } catch (err) {
-          console.error('Network error:', (err as Error).message);
-        }
+      try {
+        await command.callback(state, ...inputs.slice(1));
+      } catch (err) {
+        console.error('Network error:', (err as Error).message);
       }
-
-      state.rl.prompt();
     }
+
+    rl.prompt();
   });
 }
