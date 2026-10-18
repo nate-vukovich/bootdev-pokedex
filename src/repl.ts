@@ -1,9 +1,9 @@
-import * as readline from 'node:readline';
+import { type CLICommand, initState } from './state.js';
 
 import { commandExit } from './command_exit.js';
 import { commandHelp } from './command_help.js';
-
-import type { CLICommand } from './command.js';
+import { commandMap } from './command_map.js';
+import { commandMapB } from './command_mapb.js';
 
 export function getCommands(): Record<string, CLICommand> {
   return {
@@ -17,6 +17,16 @@ export function getCommands(): Record<string, CLICommand> {
       description: 'Displays a help message',
       callback: commandHelp,
     },
+    map: {
+      name: 'map',
+      description: 'Get the first 20 Map locations',
+      callback: commandMap,
+    },
+    mapb: {
+      name: 'mapb',
+      description: 'Get previous locations',
+      callback: commandMapB,
+    },
   };
 }
 
@@ -27,31 +37,29 @@ export function cleanInput(input: string): string[] {
     .map((item) => item.toLowerCase());
 }
 
-export function startREPL() {
-  const readLine = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-    prompt: 'Pokedex > ',
-  });
+export async function startREPL(): Promise<void> {
+  const state = initState();
 
-  readLine.prompt();
+  state.rl.prompt();
 
-  readLine.on('line', (line) => {
+  state.rl.on('line', async (line) => {
     if (line.trim().length === 0) {
-      readLine.prompt();
+      state.rl.prompt();
     } else {
       const firstCommand = cleanInput(line);
-
-      const commands = getCommands();
-      const selectedCommand = commands[firstCommand[0]];
+      const selectedCommand = state.commands[firstCommand[0]];
 
       if (!selectedCommand) {
         console.log('Unknown command');
       } else {
-        selectedCommand.callback(commands);
+        try {
+          await selectedCommand.callback(state);
+        } catch (err) {
+          console.error('Network error:', (err as Error).message);
+        }
       }
 
-      readLine.prompt();
+      state.rl.prompt();
     }
   });
 }
